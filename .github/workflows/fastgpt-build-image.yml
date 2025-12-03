@@ -62,9 +62,14 @@ jobs:
           context: .
           file: projects/app/Dockerfile
           platforms: linux/${{ matrix.archs.arch }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/fastgpt-plugin:${{ github.sha }}-${{ matrix.archs.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=fastgpt image
+            org.opencontainers.image.description=https://github.com/${{ github.repository }} image
+          cache-from: type=gha,scope=${{ matrix.archs.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.archs.arch }}
      
 
       - name: Export digest
