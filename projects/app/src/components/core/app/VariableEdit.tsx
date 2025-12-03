@@ -1,0 +1,522 @@
+import React, { useCallback, useMemo } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  Table,
+  Thead,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
+  Stack,
+  Tbody
+} from '@chakra-ui/react';
+import { SmallAddIcon } from '@chakra-ui/icons';
+import {
+  VariableInputEnum,
+  variableConfigs,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useForm, type UseFormReset } from 'react-hook-form';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import ChatFunctionTip from './Tip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import DndDrag, {
+  Draggable,
+  type DraggableProvided,
+  type DraggableStateSnapshot
+} from '@fastgpt/web/components/common/DndDrag';
+import { workflowSystemVariables } from '@/web/core/app/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+
+export const defaultVariable: VariableItemType = {
+  key: '',
+  label: '',
+  type: VariableInputEnum.input,
+  description: '',
+  required: true,
+  valueType: WorkflowIOValueTypeEnum.string,
+  canSelectFile: true,
+  canSelectImg: true,
+  maxFiles: 5,
+  timeGranularity: 'day',
+  timeType: 'point',
+  timeRangeStart: new Date(
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+  ).toISOString(),
+  timeRangeEnd: new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+};
+
+export const addVariable = () => {
+  const newVariable = { ...defaultVariable, list: [{ value: '', label: '' }] };
+  return newVariable;
+};
+
+const VariableEdit = ({
+  variables = [],
+  onChange,
+  zoom = 1
+}: {
+  variables?: VariableItemType[];
+  onChange: (data: VariableItemType[]) => void;
+  zoom?: number;
+}) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+
+  const form = useForm<VariableItemType>();
+  const { setValue, reset, watch, getValues } = form;
+  const value = getValues();
+  const type = watch('type');
+
+  const inputTypeList = useMemo(() => {
+    return variableConfigs
+      .map((group) =>
+        group
+          .filter((item) => item && item.value !== VariableInputEnum.textarea)
+          .map((item) => ({
+            icon: item.icon,
+            label: t(item.label as any),
+            value: item.value,
+            defaultValueType: item.defaultValueType,
+            description: item.description ? t(item.description as any) : ''
+          }))
+      )
+      .filter((group) => group.length > 0);
+  }, [t]);
+
+  const defaultValueType = useMemo(() => {
+    const item = inputTypeList.flat().find((item) => item.value === type);
+    return item?.defaultValueType;
+  }, [inputTypeList, type]);
+
+  const handleTypeChange = useCallback(
+    (newType: VariableInputEnum) => {
+      const defaultValIsNumber = !isNaN(Number(value.defaultValue));
+      const currentType = value.type;
+
+      const isCurrentTimeType =
+        currentType === VariableInputEnum.timePointSelect ||
+        currentType === VariableInputEnum.timeRangeSelect;
+      const isNewTimeType =
+        newType === VariableInputEnum.timePointSelect ||
+        newType === VariableInputEnum.timeRangeSelect;
+
+      if (
+        newType === VariableInputEnum.select ||
+        newType === VariableInputEnum.multipleSelect ||
+        (newType === VariableInputEnum.numberInput && !defaultValIsNumber)
+      ) {
+        setValue('defaultValue', '');
+      }
+
+      // Set time-related default values when switching from non-time type to time type
+      if (!isCurrentTimeType && isNewTimeType) {
+        setValue('defaultValue', '');
+        setValue('timeGranularity', 'day');
+        setValue(
+          'timeRangeStart',
+          new Date(
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+          ).toISOString()
+        );
+        setValue('timeRangeEnd', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+      }
+
+      // Clear default value when switching from time type to other types
+      if (isCurrentTimeType && !isNewTimeType) {
+        setValue('defaultValue', '');
+      }
+
+      setValue('type', newType);
+    },
+    [setValue, value.defaultValue, value.type]
+  );
+
+  const formatVariables = useMemo(() => {
+    const results = formatEditorVariablePickerIcon(variables);
+    return results.map<VariableItemType & { icon?: string }>((item) => {
+      const variable = variables.find((variable) => variable.key === item.key)!;
+      return {
+        ...variable,
+        icon: item.icon
+      };
+    });
+  }, [variables]);
+
+  /* 
+    - New var: random key
+    - Update var: keep key
+  */
+  const onSubmitSuccess = useCallback(
+    (data: VariableItemType, action: 'confirm' | 'continue') => {
+      data.label = data?.label?.trim();
+      if (!data.label) {
+        return toast({
+          status: 'warning',
+          title: t('app:variable_name_required')
+        });
+      }
+
+      // check if the variable already exists
+      const existingVariable = variables.find((item) => {
+        return item.key !== data.key && (data.label === item.label || data.label === item.key);
+      });
+      if (existingVariable) {
+        return toast({
+          status: 'warning',
+          title: t('app:variable_repeat')
+        });
+      }
+
+      // check if the variable is a system variable
+      if (
+        workflowSystemVariables.some(
+          (item) => item.key === data.label || t(item.label) === data.label
+        )
+      ) {
+        toast({
+          status: 'warning',
+          title: t('app:systemval_conflict_globalval')
+        });
+        return;
+      }
+
+      if (
+        data.type !== VariableInputEnum.select &&
+        data.type !== VariableInputEnum.multipleSelect &&
+        data.list
+      ) {
+        delete data.list;
+      }
+
+      if (data.type !== VariableInputEnum.file) {
+        delete data.canSelectFile;
+        delete data.canSelectImg;
+        delete data.maxFiles;
+      }
+
+      if (
+        data.type !== VariableInputEnum.timePointSelect &&
+        data.type !== VariableInputEnum.timeRangeSelect
+      ) {
+        delete data.timeGranularity;
+        delete data.timeRangeStart;
+        delete data.timeRangeEnd;
+      } else if (data.type === VariableInputEnum.timePointSelect) {
+        data.defaultValue = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+      } else if (data.type === VariableInputEnum.timeRangeSelect) {
+        data.defaultValue = [
+          data.timeRangeStart ||
+            new Date(
+              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+            ).toISOString(),
+          data.timeRangeEnd || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+        ];
+      }
+
+      if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
+        data.required = false;
+      } else {
+        data.valueType = inputTypeList
+          .flat()
+          .find((item) => item.value === data.type)?.defaultValueType;
+      }
+
+      const onChangeVariable = (() => {
+        if (data.key) {
+          return variables.map((item) => {
+            if (item.key === data.key) {
+              return data;
+            }
+            return item;
+          });
+        }
+
+        return [
+          ...variables,
+          {
+            ...data,
+            key: getNanoid(8)
+          }
+        ];
+      })();
+
+      if (action === 'confirm') {
+        onChange(onChangeVariable);
+        reset({});
+      } else if (action === 'continue') {
+        onChange(onChangeVariable);
+        toast({
+          status: 'success',
+          title: t('common:add_success')
+        });
+        reset({
+          ...addVariable(),
+          defaultValue: ''
+        });
+      }
+    },
+    [variables, toast, t, inputTypeList, onChange, reset]
+  );
+
+  const onSubmitError = useCallback(
+    (e: Object) => {
+      for (const item of Object.values(e)) {
+        if (item.message) {
+          toast({
+            status: 'warning',
+            title: item.message
+          });
+          break;
+        }
+      }
+    },
+    [toast]
+  );
+
+  return (
+    <Box className="nodrag">
+      {/* Row box */}
+      <Flex alignItems={'center'}>
+        <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
+        <FormLabel ml={2} color={'myGray.600'}>
+          {t('common:core.module.Variable')}
+        </FormLabel>
+        <ChatFunctionTip type={'variable'} />
+        <Box flex={1} />
+        <Button
+          variant={'transparentBase'}
+          leftIcon={<SmallAddIcon />}
+          iconSpacing={1}
+          size={'sm'}
+          color={'myGray.600'}
+          mr={'-5px'}
+          onClick={() => {
+            reset(addVariable());
+          }}
+        >
+          {t('common:add_new')}
+        </Button>
+      </Flex>
+      {/* Form render */}
+      {formatVariables.length > 0 && (
+        <TableContainer mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
+          <Table variant={'workflow'}>
+            <Thead>
+              <Tr>
+                <Th>{t('workflow:Variable_name')}</Th>
+                <Th>{t('common:Required_input')}</Th>
+                <Th>{t('common:Operation')}</Th>
+              </Tr>
+            </Thead>
+            <DndDrag<VariableItemType>
+              onDragEndCb={(list) => {
+                onChange(list);
+              }}
+              dataList={formatVariables}
+              renderClone={(provided, snapshot, rubric) => (
+                <TableItem
+                  provided={provided}
+                  snapshot={snapshot}
+                  item={formatVariables[rubric.source.index]}
+                  reset={reset}
+                  onChange={onChange}
+                  variables={variables}
+                />
+              )}
+              zoom={zoom}
+            >
+              {({ provided }) => (
+                <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+                  {formatVariables.map((item, index) => (
+                    <Draggable key={item.key} draggableId={item.key} index={index}>
+                      {(provided, snapshot) => (
+                        <TableItem
+                          provided={provided}
+                          snapshot={snapshot}
+                          item={item}
+                          reset={reset}
+                          onChange={onChange}
+                          variables={variables}
+                          key={item.key}
+                        />
+                      )}
+                    </Draggable>
+                  ))}
+                </Tbody>
+              )}
+            </DndDrag>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Edit modal */}
+      {!!Object.keys(value).length && (
+        <MyModal
+          iconSrc="core/app/simpleMode/variable"
+          title={t('common:core.module.Variable Setting')}
+          isOpen={true}
+          onClose={() => reset({})}
+          maxW={['90vw', '1078px']}
+          w={'100%'}
+          isCentered
+        >
+          <Flex h={'560px'}>
+            <Stack gap={4} p={8}>
+              <FormLabel color={'myGray.600'} fontWeight={'medium'}>
+                {t('workflow:Variable.Variable type')}
+              </FormLabel>
+              <Flex flexDirection={'column'} gap={4}>
+                {inputTypeList.map((list, index) => {
+                  return (
+                    <Box
+                      key={index}
+                      display={'grid'}
+                      gridTemplateColumns={'repeat(3, 1fr)'}
+                      gap={4}
+                      mt={3}
+                    >
+                      {list.map((item) => {
+                        const isSelected = type === item.value;
+                        return (
+                          <Box
+                            display={'flex'}
+                            key={item.label}
+                            border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
+                            p={3}
+                            rounded={'6px'}
+                            fontWeight={'medium'}
+                            fontSize={'14px'}
+                            alignItems={'center'}
+                            cursor={'pointer'}
+                            boxShadow={
+                              isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'
+                            }
+                            _hover={{
+                              '& > svg': {
+                                color: 'primary.600'
+                              },
+                              '& > span': {
+                                color: 'myGray.900'
+                              },
+                              border: '1px solid #3370FF',
+                              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+                            }}
+                            onClick={() => handleTypeChange(item.value)}
+                          >
+                            <MyIcon
+                              name={item.icon as any}
+                              w={'20px'}
+                              mr={1.5}
+                              color={isSelected ? 'primary.600' : 'myGray.400'}
+                            />
+                            <Box
+                              as="span"
+                              color={isSelected ? 'myGray.900' : 'inherit'}
+                              whiteSpace="nowrap"
+                            >
+                              {item.label}
+                            </Box>
+                            {item.description && (
+                              <QuestionTip label={item.description as string} ml={1} />
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  );
+                })}
+              </Flex>
+            </Stack>
+            <InputTypeConfig
+              form={form}
+              type={'variable'}
+              isEdit={!!value.key}
+              inputType={type}
+              defaultValueType={defaultValueType}
+              onClose={() => reset({})}
+              onSubmitSuccess={onSubmitSuccess}
+              onSubmitError={onSubmitError}
+            />
+          </Flex>
+        </MyModal>
+      )}
+    </Box>
+  );
+};
+
+const TableItem = ({
+  provided,
+  snapshot,
+  item,
+  reset,
+  onChange,
+  variables
+}: {
+  provided: DraggableProvided;
+  snapshot: DraggableStateSnapshot;
+  item: VariableItemType & {
+    icon?: string;
+  };
+  reset: UseFormReset<VariableItemType>;
+  onChange: (data: VariableItemType[]) => void;
+  variables: VariableItemType[];
+}) => {
+  return (
+    <Tr
+      ref={provided.innerRef}
+      {...provided.draggableProps}
+      {...provided.dragHandleProps}
+      style={{
+        ...provided.draggableProps.style,
+        opacity: snapshot.isDragging ? 0.8 : 1
+      }}
+    >
+      <Td fontWeight={'medium'}>
+        <Flex alignItems={'center'}>
+          <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
+          {item.label}
+        </Flex>
+      </Td>
+      <Td>
+        <Flex alignItems={'center'}>
+          {item.required ? <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} /> : ''}
+        </Flex>
+      </Td>
+      <Td>
+        <Flex>
+          <MyIconButton
+            icon={'common/settingLight'}
+            onClick={() => {
+              const formattedItem = {
+                ...item,
+                list:
+                  item.list ||
+                  item.enums?.map((item) => ({ label: item.value, value: item.value })) ||
+                  []
+              };
+              reset(formattedItem);
+            }}
+          />
+          <MyIconButton
+            icon={'delete'}
+            hoverColor={'red.500'}
+            onClick={() => onChange(variables.filter((variable) => variable.key !== item.key))}
+          />
+        </Flex>
+      </Td>
+    </Tr>
+  );
+};
+
+export default React.memo(VariableEdit);
