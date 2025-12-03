@@ -64,8 +64,7 @@ export async function connectMongo(props: {
       maxIdleTimeMS: 300000,
       retryWrites: true,
       retryReads: true,
-      serverSelectionTimeoutMS: 10000,
-      w: 'majority' as any
+      serverSelectionTimeoutMS: 10000
     };
 
     await db.connect(url, options);
