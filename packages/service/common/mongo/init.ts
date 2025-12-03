@@ -64,9 +64,14 @@ export async function connectMongo(props: {
       maxIdleTimeMS: 300000,
       retryWrites: true,
       retryReads: true,
-      serverSelectionTimeoutMS: 10000
+      serverSelectionTimeoutMS: (process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS as any) || 60000,
+      w: 'majority'
     });
-    console.log('mongo connected1');
+    console.log('mongo connected2');
+    console.log(
+      'process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS ',
+      process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS
+    );
 
     connectedCb?.();
 
