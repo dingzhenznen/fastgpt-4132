@@ -68,7 +68,6 @@ export async function connectMongo(props: {
     };
 
     await db.connect(url, options);
-    console.log(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS);
     console.log('mongo connected');
 
     connectedCb?.();
