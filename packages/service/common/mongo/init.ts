@@ -68,7 +68,7 @@ export async function connectMongo(props: {
     };
 
     await db.connect(url, options);
-    console.log('mongo connected1');
+    console.log('mongo connected!');
 
     connectedCb?.();
 
