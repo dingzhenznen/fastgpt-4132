@@ -53,7 +53,7 @@ export async function connectMongo(props: {
       } catch (error) {}
     });
 
-    const options = {
+    await db.connect(url, {
       bufferCommands: true,
       maxConnecting: maxConnecting,
       maxPoolSize: maxConnecting,
@@ -64,10 +64,10 @@ export async function connectMongo(props: {
       maxIdleTimeMS: 300000,
       retryWrites: true,
       retryReads: true,
-      serverSelectionTimeoutMS: 10000
-    };
-    await db.connect(url, options);
-    console.log('mongo connected');
+      serverSelectionTimeoutMS: 10000,
+      w: 'majority'
+    });
+    console.log('mongo connected2');
 
     connectedCb?.();
 
