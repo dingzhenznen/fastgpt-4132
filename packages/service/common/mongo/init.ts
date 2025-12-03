@@ -64,10 +64,9 @@ export async function connectMongo(props: {
       maxIdleTimeMS: 300000,
       retryWrites: true,
       retryReads: true,
-      serverSelectionTimeoutMS: 10000,
-      w: 'majority'
+      serverSelectionTimeoutMS: 10000
     });
-    console.log('mongo connected2');
+    console.log('mongo connected1');
 
     connectedCb?.();
 
