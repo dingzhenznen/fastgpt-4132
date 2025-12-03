@@ -66,7 +66,6 @@ export async function connectMongo(props: {
       retryReads: true,
       serverSelectionTimeoutMS: 10000
     };
-
     await db.connect(url, options);
     console.log('mongo connected');
 
