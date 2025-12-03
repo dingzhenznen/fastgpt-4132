@@ -64,7 +64,7 @@ jobs:
           platforms: linux/${{ matrix.archs.arch }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/fastgpt-plugin:${{ github.sha }}-${{ matrix.archs.arch }}
+            ghcr.io/${{ github.repository_owner }}/fastgpt-4132:${{ github.sha }}-${{ matrix.archs.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=https://github.com/${{ github.repository }} image
@@ -74,15 +74,15 @@ jobs:
 
       - name: Export digest
         run: |
-          mkdir -p /tmp/digests
+          mkdir -p ${{ runner.temp }}/digests
           digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
           name: digests-${{ matrix.archs.arch }}
-          path: /tmp/digests/*
+          path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
 
@@ -110,7 +110,7 @@ jobs:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests
+          path: ${{ runner.temp }}/digests
           pattern: digests-*
           merge-multiple: true
 
