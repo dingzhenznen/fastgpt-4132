@@ -95,7 +95,7 @@ jobs:
     strategy:
       matrix:
         sub_routes:
-          - repo: fastgpt
+          - repo: fastgpt-4132
     runs-on: ubuntu-24.04
     steps:
       - name: Login to GitHub Container Registry
