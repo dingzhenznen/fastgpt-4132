@@ -60,7 +60,7 @@ export async function connectMongo(props: {
       minPoolSize: (process.env.DB_MIN_LINK as any) || 5,
       connectTimeoutMS: 60000,
       waitQueueTimeoutMS: 60000,
-      socketTimeoutMS: 60000,
+      socketTimeoutMS: process.env.MONGODB_SOCKET_TIMEOUT_MS as any,
       maxIdleTimeMS: 300000,
       retryWrites: true,
       retryReads: true,
@@ -73,6 +73,7 @@ export async function connectMongo(props: {
       process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS
     );
     console.log('process.env.DB_MIN_LINK ', process.env.DB_MIN_LINK);
+    console.log('process.env.MONGODB_SOCKET_TIMEOUT_MS ', process.env.MONGODB_SOCKET_TIMEOUT_MS);
 
     connectedCb?.();
 
