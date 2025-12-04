@@ -57,7 +57,7 @@ export async function connectMongo(props: {
       bufferCommands: true,
       maxConnecting: maxConnecting,
       maxPoolSize: maxConnecting,
-      minPoolSize: 20,
+      minPoolSize: 5,
       connectTimeoutMS: 60000,
       waitQueueTimeoutMS: 60000,
       socketTimeoutMS: 60000,
