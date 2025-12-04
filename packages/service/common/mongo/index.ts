@@ -2,6 +2,7 @@ import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { addLog } from '../../common/system/log';
 import type { Model } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
+import pLimit from 'p-limit';
 
 export default mongoose;
 export * from 'mongoose';
@@ -122,6 +123,12 @@ export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
   return model;
 };
 
+// 创建索引同步的并发限制器，默认最多同时 5 个
+const maxConcurrentIndexSync = Number(process.env.MONGO_INDEX_SYNC_CONCURRENCY) || 5;
+const syncIndexLimit = pLimit(maxConcurrentIndexSync);
+
+// 导出用于测试
+// export const getSyncIndexLimit = () => syncIndexLimit;
 const syncMongoIndex = async (model: Model<any>) => {
   if (
     process.env.NODE_ENV === 'test' ||
@@ -132,13 +139,16 @@ const syncMongoIndex = async (model: Model<any>) => {
     return;
   }
 
-  try {
-    setTimeout(async () => {
+  // 使用模块级的 p-limit 控制并发
+  return syncIndexLimit(async () => {
+    addLog.info(`开始同步索引: ${model.collection.name}`);
+    try {
       await model.syncIndexes({ background: true });
-    }, 500);
-  } catch (error) {
-    addLog.error('Create index error', error);
-  }
+      addLog.info(`索引同步完成: ${model.collection.name}`);
+    } catch (error) {
+      addLog.error(`索引同步失败: ${model.collection.name}`, error);
+    }
+  });
 };
 
 export const ReadPreference = connectionMongo.mongo.ReadPreference;
