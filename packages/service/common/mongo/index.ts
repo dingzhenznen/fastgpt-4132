@@ -133,7 +133,9 @@ const syncMongoIndex = async (model: Model<any>) => {
   }
 
   try {
-    await model.syncIndexes({ background: true });
+    setTimeout(async () => {
+      await model.syncIndexes({ background: true });
+    }, 500);
   } catch (error) {
     addLog.error('Create index error', error);
   }
