@@ -72,6 +72,7 @@ export async function connectMongo(props: {
       'process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS ',
       process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS
     );
+    console.log('process.env.DB_MIN_LINK ', process.env.DB_MIN_LINK);
 
     connectedCb?.();
 
