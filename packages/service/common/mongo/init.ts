@@ -58,22 +58,28 @@ export async function connectMongo(props: {
       maxConnecting: maxConnecting,
       maxPoolSize: maxConnecting,
       minPoolSize: (process.env.DB_MIN_LINK as any) || 5,
-      connectTimeoutMS: 60000,
-      waitQueueTimeoutMS: 60000,
+      connectTimeoutMS: process.env.MONGODB_CONNECT_TIMEOUT_MS as any,
+      waitQueueTimeoutMS: process.env.MONGODB_WAIT_QUEUE_TIMEOUT_MS as any,
       socketTimeoutMS: process.env.MONGODB_SOCKET_TIMEOUT_MS as any,
-      maxIdleTimeMS: 300000,
+      maxIdleTimeMS: process.env.MONGODB_MAX_IDLE_TIME_MS as any,
       retryWrites: true,
       retryReads: true,
       serverSelectionTimeoutMS: (process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS as any) || 60000,
       w: 'majority'
     });
     console.log('mongo connected2');
+    console.log('process.env.DB_MIN_LINK ', process.env.DB_MIN_LINK);
+    console.log('process.env.MONGODB_CONNECT_TIMEOUT_MS ', process.env.MONGODB_CONNECT_TIMEOUT_MS);
+    console.log(
+      'process.env.MONGODB_WAIT_QUEUE_TIMEOUT_MS ',
+      process.env.MONGODB_WAIT_QUEUE_TIMEOUT_MS
+    );
+    console.log('process.env.MONGODB_SOCKET_TIMEOUT_MS ', process.env.MONGODB_SOCKET_TIMEOUT_MS);
+    console.log('process.env.MONGODB_MAX_IDLE_TIME_MS ', process.env.MONGODB_MAX_IDLE_TIME_MS);
     console.log(
       'process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS ',
       process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS
     );
-    console.log('process.env.DB_MIN_LINK ', process.env.DB_MIN_LINK);
-    console.log('process.env.MONGODB_SOCKET_TIMEOUT_MS ', process.env.MONGODB_SOCKET_TIMEOUT_MS);
 
     connectedCb?.();
 
