@@ -61,7 +61,7 @@ export async function connectMongo(props: {
       connectTimeoutMS: (process.env.MONGODB_CONNECT_TIMEOUT_MS as any) || 60000,
       waitQueueTimeoutMS: (process.env.MONGODB_WAIT_QUEUE_TIMEOUT_MS as any) || 60000,
       socketTimeoutMS: (process.env.MONGODB_SOCKET_TIMEOUT_MS as any) || 60000,
-      maxIdleTimeMS: (process.env.MONGODB_MAX_IDLE_TIME_MS as any) || 30000,
+      maxIdleTimeMS: (process.env.MONGODB_MAX_IDLE_TIME_MS as any) || 300000,
       retryWrites: true,
       retryReads: true,
       serverSelectionTimeoutMS: (process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS as any) || 60000,
